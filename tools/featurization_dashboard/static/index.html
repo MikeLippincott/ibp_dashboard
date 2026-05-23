@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Featurization Time Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f2ee;
+      --panel: rgba(255, 255, 255, 0.82);
+      --panel-strong: #ffffff;
+      --text: #16212b;
+      --muted: #5f6b76;
+      --accent: #0f766e;
+      --accent-2: #c2410c;
+      --border: rgba(22, 33, 43, 0.10);
+      --shadow: 0 20px 60px rgba(27, 31, 35, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: radial-gradient(circle at top left, #fff7e8 0, #f3f2ee 34%, #e7edf2 100%); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+    body::before { content: ""; position: fixed; inset: 0; background: linear-gradient(120deg, rgba(15,118,110,.07), transparent 32%, rgba(194,65,12,.06) 78%, transparent); pointer-events: none; }
+
+    .shell { position: relative; max-width: 1560px; margin: 0 auto; padding: 28px; }
+    .hero { display: grid; grid-template-columns: 1.5fr auto; gap: 18px; align-items: end; margin-bottom: 18px; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .18em; font-size: 12px; color: var(--accent); font-weight: 700; margin: 0 0 10px; }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 58px); line-height: .95; letter-spacing: -0.05em; }
+    .lede { margin: 14px 0 0; max-width: 72ch; color: var(--muted); font-size: 16px; line-height: 1.55; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-width: 420px; }
+    .metric { background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow); padding: 16px 18px; }
+    .metric .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+    .metric .value { margin-top: 10px; font-size: 28px; font-weight: 800; letter-spacing: -0.04em; }
+
+    .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+    .panel { background: var(--panel); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow); }
+    .panel .inner { padding: 18px; }
+    .panel h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    .field label { font-size: 13px; color: var(--muted); }
+    .field input[type="number"], .field input[type="range"], .field select { width: 100%; }
+    .field input[type="number"], .field select { border: 1px solid var(--border); border-radius: 14px; padding: 11px 12px; background: rgba(255,255,255,.86); color: var(--text); font-size: 14px; }
+    .field input[type="range"] { accent-color: var(--accent); }
+
+    .checks { display: grid; gap: 8px; }
+    .check { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--text); }
+    .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+    .chart-stack { display: grid; gap: 16px; }
+    .chart { height: 420px; }
+    .chart.tall { height: 520px; }
+    .table-wrap { overflow: auto; border-radius: 16px; border: 1px solid var(--border); background: rgba(255,255,255,.76); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(22,33,43,.08); }
+    th { position: sticky; top: 0; background: rgba(248,250,252,.96); }
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .footer-note { margin-top: 14px; color: var(--muted); font-size: 13px; }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    button { border: 0; border-radius: 999px; padding: 11px 15px; font-weight: 700; cursor: pointer; background: var(--accent); color: white; box-shadow: 0 10px 30px rgba(15,118,110,.25); }
+    button.secondary { background: rgba(22,33,43,.08); color: var(--text); box-shadow: none; }
+    @media (max-width: 1280px) {
+      .layout { grid-template-columns: 1fr; }
+      .summary-grid { min-width: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .shell { padding: 16px; }
+      .hero { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .field-grid { grid-template-columns: 1fr; }
+      .chart { height: 360px; }
+      .chart.tall { height: 420px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <div>
+        <p class="eyebrow">Featurization planning</p>
+        <h1>Featurization Time Dashboard</h1>
+        <p class="lede">Estimate total runtime, days, and service units for a compute sweep across cores. This static page is self-contained and can be hosted directly from GitHub Pages or any static file server.</p>
+      </div>
+      <div class="summary-grid">
+        <div class="metric"><div class="label">Total image sets</div><div class="value" id="totalImageSets">0</div></div>
+        <div class="metric"><div class="label">Max cores</div><div class="value" id="maxCoresSummary">0</div></div>
+        <div class="metric"><div class="label">Sample points</div><div class="value" id="samplePointsSummary">0</div></div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="panel">
+        <div class="inner">
+          <h2>Dataset parameters</h2>
+          <div class="field-grid">
+            <div class="field"><label for="plates">Plates</label><input id="plates" type="number" min="1" step="1" value="1"></div>
+            <div class="field"><label for="wells">Wells per plate</label><input id="wells" type="number" min="1" step="1" value="56"></div>
+            <div class="field"><label for="fovs">FOVs per well</label><input id="fovs" type="number" min="1" step="1" value="4"></div>
+            <div class="field"><label for="timepoints">Timepoints</label><input id="timepoints" type="number" min="1" step="1" value="102"></div>
+          </div>
+          <div class="field"><label for="timePerSet">Time to featurize one image set (minutes)</label><input id="timePerSet" type="number" min="0.1" step="0.1" value="1.5"></div>
+
+          <h2>Compute parameters</h2>
+          <div class="field-grid">
+            <div class="field"><label for="maxWorkers">Max local workers available</label><input id="maxWorkers" type="number" min="1" step="1" value="128"></div>
+            <div class="field"><label for="awsSoft">AWS soft max</label><input id="awsSoft" type="number" min="1" step="1" value="1440"></div>
+          </div>
+          <div class="field"><label for="awsHard">AWS hard max</label><input id="awsHard" type="number" min="1" step="1" value="20000"></div>
+
+          <h2>Plot options</h2>
+          <div class="checks">
+            <label class="check"><input id="showHours" type="checkbox" checked> Total Hours</label>
+            <label class="check"><input id="showTimePerPlate" type="checkbox" checked> Time per Plate</label>
+            <label class="check"><input id="showCost" type="checkbox" checked> Spot Cost</label>
+          </div>
+          <div class="checks" style="margin-top: 10px;">
+            <label class="check"><input id="includeSerialTime" type="checkbox"> Include serial time (1 core)</label>
+          </div>
+          <div class="field"><label for="primaryUnits">First plot y-axis units</label><select id="primaryUnits"><option value="minutes">minutes</option><option value="hours" selected>hours</option><option value="days">days</option></select></div>
+          <div class="field"><label for="annotate">Annotate core counts</label><input id="annotate" type="text" value="1,16,32,64,128"></div>
+          <div class="field"><label for="sampleLimit">Number of core samples to compute</label><input id="sampleLimit" type="range" min="10" max="20000" value="500" step="10"><div class="hint"><span id="sampleLimitValue">500</span> sampled points</div></div>
+          <div class="button-row">
+            <button id="downloadCsv">Download CSV</button>
+            <button id="resetDefaults" class="secondary">Reset defaults</button>
+          </div>
+          <div class="footer-note">The static page computes the same planning math as the Streamlit app, but everything runs in the browser.</div>
+        </div>
+      </aside>
+
+      <main class="chart-stack">
+        <section class="panel"><div class="inner"><h2>Interactive plots</h2><div id="hoursChart" class="chart tall"></div></div></section>
+        <section class="panel"><div class="inner"><div id="plateChart" class="chart"></div></div></section>
+        <section class="panel"><div class="inner"><div id="costChart" class="chart"></div></div></section>
+      </main>
+
+      <aside class="panel">
+        <div class="inner">
+          <h2>Selected values</h2>
+          <p class="hint">Annotated cores are summarized below.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Cores</th><th>Value</th></tr></thead>
+              <tbody id="annotatedTable"><tr><td colspan="2">No values yet.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const defaults = {
+      plates: 1,
+      wells: 56,
+      fovs: 4,
+      timepoints: 102,
+      timePerSet: 1.5,
+      maxWorkers: 128,
+      awsSoft: 1440,
+      awsHard: 20000,
+      showHours: true,
+      showTimePerPlate: true,
+      showCost: true,
+      includeSerialTime: false,
+      primaryUnits: 'hours',
+      annotate: '1,16,32,64,128',
+      sampleLimit: 500,
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const fmt = new Intl.NumberFormat('en-US');
+
+    function clampInt(v, min, max) {
+      const n = Number.parseInt(v, 10);
+      if (Number.isNaN(n)) return min;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function clampFloat(v, min, max) {
+      const n = Number.parseFloat(v);
+      if (Number.isNaN(n)) return min;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.filter((v) => Number.isFinite(v) && v >= 1))].sort((a, b) => a - b);
+    }
+
+    function buildCoreNumbers(maxCores) {
+      const smallEnd = Math.min(maxCores, 256);
+      const small = Array.from({ length: smallEnd }, (_, i) => i + 1);
+      let large = [];
+      if (maxCores > 256) {
+        const count = Math.min(maxCores - 255, 1000);
+        large = Array.from({ length: count }, (_, i) => Math.round(256 + (maxCores - 256) * (count === 1 ? 0 : i / (count - 1))));
+      }
+      return uniqueSorted([...small, ...large]);
+    }
+
+    function computeData(totalImageSets, minutesPerSet, maxCores) {
+      const numbers = buildCoreNumbers(maxCores);
+      return numbers.map((cores) => {
+        const totalMinutes = (totalImageSets * minutesPerSet) / cores;
+        const totalHours = totalMinutes / 60;
+        const totalDays = totalHours / 24;
+        const totalSUs = cores * totalHours;
+        return { cores, totalMinutes, totalHours, totalDays, totalSUs };
+      });
+    }
+
+    function pickSample(data, limit) {
+      if (data.length <= limit) return data.slice();
+      const step = Math.max(1, Math.floor(data.length / limit));
+      return data.filter((_, idx) => idx % step === 0);
+    }
+
+    function parseAnnotated() {
+      return uniqueSorted($('annotate').value.split(/[\s,]+/).map((v) => Number.parseInt(v, 10)));
+    }
+
+    function renderTable(target, rows, emptyCols) {
+      if (!rows.length) {
+        target.innerHTML = `<tr><td colspan="${emptyCols}">No values present in the computed range.</td></tr>`;
+        return;
+      }
+      target.innerHTML = rows.map((row) => `<tr>${row.map((value) => `<td>${value}</td>`).join('')}</tr>`).join('');
+    }
+
+    function formatHours(value) {
+      return value.toFixed(1);
+    }
+
+    function formatDays(value) {
+      return value.toFixed(1);
+    }
+
+    function render() {
+      const plates = clampInt($('plates').value, 1, 1000000);
+      const wells = clampInt($('wells').value, 1, 1000000);
+      const fovs = clampInt($('fovs').value, 1, 1000000);
+      const timepoints = clampInt($('timepoints').value, 1, 1000000);
+      const minutesPerSet = clampFloat($('timePerSet').value, 0.1, 1000000);
+      const maxWorkers = clampInt($('maxWorkers').value, 1, 1000000);
+      const awsSoft = clampInt($('awsSoft').value, 1, 1000000);
+      const awsHard = clampInt($('awsHard').value, 1, 1000000);
+      const sampleLimit = clampInt($('sampleLimit').value, 10, 20000);
+
+      $('sampleLimitValue').textContent = fmt.format(sampleLimit);
+      const wellFovs = plates * wells * fovs;
+      const totalImageSets = wellFovs * timepoints;
+      const maxCores = Math.max(maxWorkers, awsSoft, awsHard, sampleLimit);
+      const data = computeData(totalImageSets, minutesPerSet, maxCores);
+      const sample = pickSample(data, sampleLimit);
+      const annotate = parseAnnotated();
+      const x = sample.map((d) => d.cores);
+      const yPlate = sample.map((d) => d.totalHours / plates);
+      const cpuHoursPerPlate = (wellFovs * timepoints * minutesPerSet) / 60;
+      const units = $('primaryUnits').value;
+      const unitsKey = { minutes: 'totalMinutes', hours: 'totalHours', days: 'totalDays' }[units];
+      const unitsLabel = { minutes: 'Minutes', hours: 'Hours', days: 'Days' }[units];
+      const includeSerialTime = $('includeSerialTime').checked;
+
+      $('totalImageSets').textContent = fmt.format(totalImageSets);
+      $('maxCoresSummary').textContent = fmt.format(maxCores);
+      $('samplePointsSummary').textContent = fmt.format(sample.length);
+
+      const annotateRows = annotate
+        .filter((cores) => cores >= 1 && cores <= maxCores)
+        .map((cores) => {
+          const match = data.find((row) => row.cores === cores);
+          if (!includeSerialTime && cores === 1) return null;
+          return match ? [fmt.format(match.cores), Number(match[unitsKey]).toFixed(1)] : null;
+        })
+        .filter(Boolean);
+
+      const awsRows = [
+        ['AWS soft max', awsSoft],
+        ['AWS hard max', awsHard],
+      ].map(([label, cores]) => {
+        const match = data.find((row) => row.cores === cores);
+        return match ? [label, Number(match[unitsKey]).toFixed(1)] : null;
+      }).filter(Boolean);
+      renderTable($('annotatedTable'), [...annotateRows, ...awsRows], 2);
+
+      const keyPoints = uniqueSorted([1, 16, 32, 64, 128, maxWorkers, awsSoft, awsHard]).filter((v) => v <= maxCores);
+      const palette = ['#0f766e', '#c2410c', '#3b82f6', '#7c3aed', '#0891b2', '#84cc16', '#f59e0b', '#db2777'];
+      const hoursTraces = [];
+      for (let plateCount = 1; plateCount <= plates; plateCount += 1) {
+        const plotX = includeSerialTime ? x : x.filter((core) => core > 1);
+        const plateHours = plotX.map((core) => {
+          const totalMinutes = (wellFovs * timepoints * plateCount * minutesPerSet) / core;
+          return { minutes: totalMinutes, hours: totalMinutes / 60, days: totalMinutes / 60 / 24 }[units];
+        });
+        hoursTraces.push({
+          x: plotX,
+          y: plateHours,
+          mode: 'lines+markers',
+          name: '',
+          line: { color: palette[(plateCount - 1) % palette.length], width: 3 },
+          marker: { size: 5 },
+          showlegend: false,
+        });
+      }
+      const yAxisTitle = unitsLabel;
+      const hoursLayout = {
+        title: { text: `Total Time (${units}) — ${fmt.format(wellFovs * timepoints)} image sets per plate`, font: { size: 18 } },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        margin: { l: 60, r: 20, t: 60, b: 55 },
+        xaxis: { title: 'Cores', gridcolor: 'rgba(22,33,43,.08)' },
+        yaxis: { title: yAxisTitle, gridcolor: 'rgba(22,33,43,.08)', type: 'log' },
+        showlegend: false,
+        shapes: keyPoints.map((kp) => ({ type: 'line', x0: kp, x1: kp, y0: 0, y1: 1, yref: 'paper', line: { color: 'rgba(90,100,110,.30)', dash: 'dash', width: 1 } })),
+        annotations: keyPoints.map((kp) => ({ x: kp, y: 1, yref: 'paper', text: String(kp), showarrow: false, yshift: 8, font: { size: 11, color: '#53606c' } })),
+      };
+      if (!includeSerialTime) {
+        hoursLayout.shapes = hoursLayout.shapes.filter((shape) => shape.x0 !== 1);
+        hoursLayout.annotations = hoursLayout.annotations.filter((annotation) => annotation.x !== 1);
+      }
+      const hoursVisible = $('showHours').checked;
+      $('hoursChart').style.display = hoursVisible ? '' : 'none';
+      if (hoursVisible) Plotly.newPlot('hoursChart', hoursTraces, hoursLayout, { responsive: true, displaylogo: false });
+
+      const plateVisible = $('showTimePerPlate').checked;
+      $('plateChart').parentElement.parentElement.style.display = plateVisible ? '' : 'none';
+      if (plateVisible) {
+        Plotly.newPlot('plateChart', [{ x, y: yPlate, mode: 'lines+markers', name: 'Hours per plate', line: { color: '#c2410c', width: 3 }, marker: { size: 5 }, showlegend: false }], {
+          title: { text: `Time per Plate (hours) — ${fmt.format(plates)} plates`, font: { size: 18 } },
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          margin: { l: 60, r: 20, t: 60, b: 55 },
+          xaxis: { title: 'Cores', gridcolor: 'rgba(22,33,43,.08)' },
+          yaxis: { title: 'Hours per plate', gridcolor: 'rgba(22,33,43,.08)', type: 'log' },
+          showlegend: false,
+        }, { responsive: true, displaylogo: false });
+      }
+
+      const costVisible = $('showCost').checked;
+      $('costChart').parentElement.parentElement.style.display = costVisible ? '' : 'none';
+      if (costVisible) {
+        const plateCounts = Array.from({ length: plates }, (_, idx) => idx + 1);
+        const cpuHours = plateCounts.map((plateCount) => cpuHoursPerPlate * plateCount);
+        const costLow = cpuHours.map((value) => value * 0.006);
+        const costHigh = cpuHours.map((value) => value * 0.04);
+        const costMid = cpuHours.map((value, idx) => (costLow[idx] + costHigh[idx]) / 2);
+        Plotly.newPlot('costChart', [{
+          x: cpuHours,
+          y: costMid,
+          mode: 'lines+markers',
+          name: 'Spot cost',
+          line: { color: '#7c3aed', width: 3 },
+          marker: { size: 5 },
+          showlegend: false,
+          error_y: {
+            type: 'data',
+            symmetric: false,
+            array: costHigh.map((value, idx) => value - costMid[idx]),
+            arrayminus: costMid.map((value, idx) => value - costLow[idx]),
+            visible: true,
+            thickness: 1.5,
+            width: 0,
+            color: '#7c3aed',
+          },
+        }], {
+          title: { text: 'Spot Cost Estimate ($0.006 to $0.04 per CPU-hour)', font: { size: 18 } },
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          margin: { l: 60, r: 20, t: 60, b: 55 },
+          xaxis: { title: 'Total CPU-hours requested for all image-sets', gridcolor: 'rgba(22,33,43,.08)' },
+          yaxis: { title: 'Cost (USD)', gridcolor: 'rgba(22,33,43,.08)', tickprefix: '$', tickformat: ',.2f' },
+          showlegend: false,
+        }, { responsive: true, displaylogo: false });
+      }
+
+      const rows = [
+        ['Plates', plates],
+        ['Wells/plate', wells],
+        ['FOVs/well', fovs],
+        ['Timepoints', timepoints],
+        ['Image sets', fmt.format(totalImageSets)],
+        ['Max cores', fmt.format(maxCores)],
+      ];
+      document.title = `Featurization Time Dashboard — ${fmt.format(totalImageSets)} sets`;
+      console.debug('Rendered dashboard', rows);
+    }
+
+    function csvFromData() {
+      const plates = clampInt($('plates').value, 1, 1000000);
+      const wells = clampInt($('wells').value, 1, 1000000);
+      const fovs = clampInt($('fovs').value, 1, 1000000);
+      const timepoints = clampInt($('timepoints').value, 1, 1000000);
+      const minutesPerSet = clampFloat($('timePerSet').value, 0.1, 1000000);
+      const maxWorkers = clampInt($('maxWorkers').value, 1, 1000000);
+      const awsSoft = clampInt($('awsSoft').value, 1, 1000000);
+      const awsHard = clampInt($('awsHard').value, 1, 1000000);
+      const maxCores = Math.max(maxWorkers, awsSoft, awsHard, clampInt($('sampleLimit').value, 10, 20000));
+      const totalImageSets = plates * wells * fovs * timepoints;
+      const data = computeData(totalImageSets, minutesPerSet, maxCores);
+      const header = 'number_of_cores,total_time_minutes,total_time_hours,total_time_days,total_SUs_used';
+      return [header, ...data.map((row) => [row.cores, row.totalMinutes, row.totalHours, row.totalDays, row.totalSUs].join(','))].join('\n');
+    }
+
+    function wireInputs() {
+      const ids = ['plates', 'wells', 'fovs', 'timepoints', 'timePerSet', 'maxWorkers', 'awsSoft', 'awsHard', 'showHours', 'showTimePerPlate', 'showCost', 'includeSerialTime', 'primaryUnits', 'annotate', 'sampleLimit'];
+      ids.forEach((id) => $(id).addEventListener('input', render));
+      $('downloadCsv').addEventListener('click', () => {
+        const blob = new Blob([csvFromData()], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'featurization_times.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+      });
+      $('resetDefaults').addEventListener('click', () => {
+        Object.entries(defaults).forEach(([key, value]) => {
+          const el = $(key);
+          if (!el) return;
+          if (el.type === 'checkbox') el.checked = Boolean(value);
+          else el.value = value;
+        });
+        render();
+      });
+    }
+
+    wireInputs();
+    render();
+  </script>
+</body>
+</html>
