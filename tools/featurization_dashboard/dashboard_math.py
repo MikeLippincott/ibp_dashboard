@@ -1,5 +1,8 @@
+import pathlib
+
 import numpy as np
 import pandas as pd
+
 
 DEFAULT_IBP_NUMBER_OF_FEATURES = 5000
 
@@ -78,3 +81,49 @@ def ibp_time_and_mem_estimation(
         "memory_mb_per_plate": [memory_mb_per_plate],
         "memory_gb_per_plate": [memory_gb_per_plate],
     })
+
+
+def _fit_linear_surface(points, values, new_sample_number, new_feature_number):
+    design_matrix = np.column_stack([points, np.ones(len(points))])
+    coefficients, _, _, _ = np.linalg.lstsq(design_matrix, values, rcond=None)
+    return float(np.dot([new_sample_number, new_feature_number, 1.0], coefficients))
+
+def get_interpolated_time_and_memory_usage(new_sample_number, new_feature_number):
+
+    df_path = pathlib.Path("../../cytomining_benchmarking/profiling_results.parquet").resolve()
+    if not df_path.exists():
+        raise FileNotFoundError(f"Profiling results parquet file not found at {df_path}")
+    df = pd.read_parquet(df_path)
+    processes = df["process_name"].dropna().unique()
+    interpolated_results = []
+    for process in processes:
+        subset = df[df["process_name"] == process]
+        points = subset[["number_of_samples", "number_of_features"]].values
+        elapsed_time = subset["elapsed_time"].values
+        peak_memory = subset["peak_memory_usage_GB"].values
+        # interpolate if within the bounds of the data
+        # otherwise extrapolate but with a warning
+        if (new_sample_number < points[:, 0].min() or new_sample_number > points[:, 0].max() or
+            new_feature_number < points[:, 1].min() or new_feature_number > points[:, 1].max()):
+            print(f"Warning: Extrapolating for process {process} at sample number {new_sample_number} and feature number {new_feature_number}")
+        else:
+            pass
+
+        interpolated_time = np.round(
+            _fit_linear_surface(points, elapsed_time, new_sample_number, new_feature_number),
+            2,
+        )
+        interpolated_memory = np.round(
+            _fit_linear_surface(points, peak_memory, new_sample_number, new_feature_number),
+            2,
+        )
+        interpolated_results.append({
+            "process_name": process,
+            "interpolated_time": interpolated_time,
+            "interpolated_memory": interpolated_memory,
+            "number_of_samples": new_sample_number,
+            "number_of_features": new_feature_number,
+            "matrix_size": new_sample_number * new_feature_number
+        })
+    interpolated_df = pd.DataFrame(interpolated_results)
+    return interpolated_df

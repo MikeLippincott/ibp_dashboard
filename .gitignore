@@ -1,0 +1,21 @@
+
+cytomining_benchmarking/profiling_results.parquet
+cytomining_benchmarking/results
+
+# Ignore Python files and common Python artifacts
+*.py
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python
+env/
+venv/
+.venv/
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+uv.lock

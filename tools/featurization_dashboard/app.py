@@ -188,6 +188,9 @@ st.download_button(label='Download full CSV', data=csv, file_name='featurization
 st.subheader("Image-based profiling (IBP) estimations")
 st.markdown("""Note this is not an accurate section more benchmarking needs to be performed first.\nThis section provides rough estimates for how long it would take to featurize a dataset using image-based profiling methods like CellProfiler or deep learning-based feature extraction. These are very rough estimates and can vary widely based on the specific methods, hardware, and dataset characteristics. We make a key assumption here that the number of plates never exceeds the available number of cores/machines, thus all plates can be run in parallel. Adjust the number of single cells per FOV, number of features and timepoints to see how it impacts the estimates.""")
 
+get_interpolated_time_and_memory_usage(new_sample_number, new_feature_number)
+
+
 # plot for IBP time per plate for CytoTable based on the number of single-cells
 cytotable_df = ibp_time_and_mem_estimation(SINGLE_CELLS_PER_FOV, FOVS_PER_WELL, WELLS, TIMEPOINTS, CytoTable_time_per_1000_cells_per_1000_features, number_of_features=NUMBER_OF_FEATURES)
 pycytominer_norm_df = ibp_time_and_mem_estimation(SINGLE_CELLS_PER_FOV, FOVS_PER_WELL, WELLS, TIMEPOINTS, pycytominer_normalization_time_per_1000_cells_per_1000_features, number_of_features=NUMBER_OF_FEATURES)
