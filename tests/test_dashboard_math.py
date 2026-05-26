@@ -5,6 +5,7 @@ from featurization_dashboard.dashboard_math import (
     CytoTable_time_per_1000_cells_per_1000_features,
     aggregation_time_per_1000_features,
     compute_df,
+    compute_parallelized_feature_time_series,
     compute_plate_time_series,
     compute_spot_cost_series,
     ibp_time_and_mem_estimation,
@@ -59,6 +60,40 @@ def test_compute_spot_cost_series_uses_midpoint_of_bounds():
 
     assert list(df["plate_count"]) == [1, 2]
     assert math.isclose(df.iloc[0]["spot_cost_mid"], (df.iloc[0]["spot_cost_low"] + df.iloc[0]["spot_cost_high"]) / 2)
+
+
+def test_compute_parallelized_feature_time_series_includes_all_levels():
+    df = compute_parallelized_feature_time_series(
+        plates=2,
+        wells_per_plate=3,
+        fovs_per_well=4,
+        timepoints=5,
+        time_min_per_image_set=1.5,
+        max_cores=8,
+    )
+
+    assert set(df["parallelization_level"].unique()) == {
+        "plate_well_fov_time",
+        "well_fov",
+        "well",
+        "plate",
+    }
+    assert set(df["number_of_cores"].unique()) == set(range(1, 9))
+
+
+def test_parallelization_levels_obey_expected_worker_limits():
+    df = compute_parallelized_feature_time_series(
+        plates=2,
+        wells_per_plate=1,
+        fovs_per_well=1,
+        timepoints=1,
+        time_min_per_image_set=10.0,
+        max_cores=8,
+    )
+
+    plate_rows = df[(df["parallelization_level"] == "plate") & (df["number_of_cores"] == 8)]
+    assert plate_rows.iloc[0]["effective_workers"] == 2
+    assert math.isclose(plate_rows.iloc[0]["total_time_minutes"], 10.0)
 
 
 def test_ibp_time_and_mem_estimation_scales_with_feature_count():

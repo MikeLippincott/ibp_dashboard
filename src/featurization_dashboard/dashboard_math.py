@@ -61,6 +61,64 @@ def compute_spot_cost_series(wells, fovs_per_well, timepoints, time_min_per_set,
     })
 
 
+def compute_parallelized_feature_time_series(
+    plates,
+    wells_per_plate,
+    fovs_per_well,
+    timepoints,
+    time_min_per_image_set,
+    max_cores,
+):
+    """Estimate total wall-clock time across different parallelization levels.
+
+    Parallelization levels are based on the granularity of independent tasks:
+    - plate_well_fov_time: one task per image set
+    - well_fov: one task per well/fov across all timepoints
+    - well: one task per well across all fovs/timepoints
+    - plate: one task per plate
+    """
+
+    numbers = compute_df(1, time_min_per_image_set, max_cores, 1)["number_of_cores"].to_numpy()
+    levels = {
+        "plate_well_fov_time": {
+            "task_count": plates * wells_per_plate * fovs_per_well * timepoints,
+            "task_duration_minutes": time_min_per_image_set,
+        },
+        "well_fov": {
+            "task_count": plates * wells_per_plate * fovs_per_well,
+            "task_duration_minutes": timepoints * time_min_per_image_set,
+        },
+        "well": {
+            "task_count": plates * wells_per_plate,
+            "task_duration_minutes": fovs_per_well * timepoints * time_min_per_image_set,
+        },
+        "plate": {
+            "task_count": plates,
+            "task_duration_minutes": wells_per_plate * fovs_per_well * timepoints * time_min_per_image_set,
+        },
+    }
+
+    rows = []
+    for level_name, level_meta in levels.items():
+        task_count = int(level_meta["task_count"])
+        task_duration_minutes = float(level_meta["task_duration_minutes"])
+        effective_workers = np.minimum(numbers, task_count)
+        total_minutes = (task_count / effective_workers) * task_duration_minutes
+
+        rows.append(pd.DataFrame({
+            "parallelization_level": level_name,
+            "number_of_cores": numbers,
+            "task_count": task_count,
+            "task_duration_minutes": task_duration_minutes,
+            "effective_workers": effective_workers,
+            "total_time_minutes": total_minutes,
+            "total_time_hours": total_minutes / 60.0,
+            "total_time_days": total_minutes / 60.0 / 24.0,
+        }))
+
+    return pd.concat(rows, ignore_index=True)
+
+
 def _fit_linear_surface(points, values, new_sample_number, new_feature_number):
     design_matrix = np.column_stack([points, np.ones(len(points))])
     coefficients, _, _, _ = np.linalg.lstsq(design_matrix, values, rcond=None)
