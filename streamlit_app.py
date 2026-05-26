@@ -1,4 +1,5 @@
 from pathlib import Path
+import runpy
 import sys
 
 import streamlit as st
@@ -10,7 +11,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 try:
-    import featurization_dashboard.app  # noqa: F401
+    runpy.run_path(str(SRC / "featurization_dashboard" / "app.py"), run_name="__main__")
 except Exception as exc:
     st.set_page_config(layout="wide", page_title="Featurization Dashboard")
     st.error("The dashboard failed to start in this deployment.")
