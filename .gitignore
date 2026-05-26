@@ -3,7 +3,6 @@ cytomining_benchmarking/profiling_results.parquet
 cytomining_benchmarking/results
 
 # Ignore Python files and common Python artifacts
-*.py
 *.pyc
 *.pyo
 *.pyd
