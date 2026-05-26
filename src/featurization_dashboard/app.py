@@ -191,38 +191,41 @@ st.markdown("""Note this is not an accurate section more benchmarking needs to b
 
 # plot for IBP time per plate for CytoTable based on the number of single-cells
 # cytotable_df = ibp_time_and_mem_estimation(SINGLE_CELLS_PER_FOV, FOVS_PER_WELL, WELLS, TIMEPOINTS, CytoTable_time_per_1000_cells_per_1000_features, number_of_features=NUMBER_OF_FEATURES)
+try:
+    pycytominer_df = call_metric_interpolation_given_parameters(
+        number_of_single_cells_per_fov=SINGLE_CELLS_PER_FOV,
+        number_of_features=NUMBER_OF_FEATURES,
+        fovs_per_well=FOVS_PER_WELL,
+        wells_per_plate=WELLS,
+        timepoints=TIMEPOINTS,
+    )
 
-pycytominer_df = call_metric_interpolation_given_parameters(
-    number_of_single_cells_per_fov=SINGLE_CELLS_PER_FOV,
-    number_of_features=NUMBER_OF_FEATURES,
-    fovs_per_well=FOVS_PER_WELL,
-    wells_per_plate=WELLS,
-    timepoints=TIMEPOINTS,
-)
+    pycytominer_df.rename(columns={
+        "interpolated_time_seconds": "time_seconds"
+    }, inplace=True)
+    pycytominer_df['time_minutes'] = pycytominer_df['time_seconds'] / 60.0
+    pycytominer_df['time_hours'] = pycytominer_df['time_minutes'] / 60.0
+    pycytominer_df['time_days'] = pycytominer_df['time_hours'] / 24.0
 
-pycytominer_df.rename(columns={
-    "interpolated_time_seconds": "time_seconds"
-}, inplace=True)
-pycytominer_df['time_minutes'] = pycytominer_df['time_seconds'] / 60.0
-pycytominer_df['time_hours'] = pycytominer_df['time_minutes'] / 60.0
-pycytominer_df['time_days'] = pycytominer_df['time_hours'] / 24.0
+    ibp_time_column = {
+        "seconds": "time_seconds",
+        "minutes": "time_minutes",
+        "hours": "time_hours",
+        "days": "time_days",
+    }[primary_units]
+    ibp_time_label = primary_units.capitalize()
 
-ibp_time_column = {
-    "seconds": "time_seconds",
-    "minutes": "time_minutes",
-    "hours": "time_hours",
-    "days": "time_days",
-}[primary_units]
-ibp_time_label = primary_units.capitalize()
+    # plot a bar plot for time per plate for each method
+    fig_ibp = px.bar(pycytominer_df, x="process_name", y=ibp_time_column,
+                     labels={ibp_time_column: f"Estimated {ibp_time_label} per plate", "method": "IBP method"},
+                     title=f"Estimated Time per Plate for IBP Methods ({ibp_time_label}; based on {SINGLE_CELLS_PER_FOV} single cells per FOV)")
+    st.plotly_chart(fig_ibp, use_container_width=True)
 
-# plot a bar plot for time per plate for each method
-fig_ibp = px.bar(pycytominer_df, x="process_name", y=ibp_time_column,
-                 labels={ibp_time_column: f"Estimated {ibp_time_label} per plate", "method": "IBP method"},
-                 title=f"Estimated Time per Plate for IBP Methods ({ibp_time_label}; based on {SINGLE_CELLS_PER_FOV} single cells per FOV)")
-st.plotly_chart(fig_ibp, use_container_width=True)
-
-# plot a bar plot for time per plate for each method
-fig_mem_ibp = px.bar(pycytominer_df, x="process_name", y="interpolated_memory_GB",
-                     labels={"interpolated_memory_GB": "Estimated Memory (GB) per plate", "method": "IBP method"},
-                     title=f"Estimated Memory per Plate for IBP Methods (GB; based on {SINGLE_CELLS_PER_FOV} single cells per FOV)")
-st.plotly_chart(fig_mem_ibp, use_container_width=True)
+    # plot a bar plot for memory per plate for each method
+    fig_mem_ibp = px.bar(pycytominer_df, x="process_name", y="interpolated_memory_GB",
+                         labels={"interpolated_memory_GB": "Estimated Memory (GB) per plate", "method": "IBP method"},
+                         title=f"Estimated Memory per Plate for IBP Methods (GB; based on {SINGLE_CELLS_PER_FOV} single cells per FOV)")
+    st.plotly_chart(fig_mem_ibp, use_container_width=True)
+except Exception as exc:
+    st.error("IBP estimation data could not be loaded in this deployment.")
+    st.caption(f"Details: {exc}")
