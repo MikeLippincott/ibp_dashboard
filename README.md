@@ -1,5 +1,7 @@
 # Featurization Estimations Dashboard
 
+https://ibpdashboard.streamlit.app/
+
 This repository contains a small Streamlit dashboard and a static export for exploring rough compute estimates for featurization workflows.
 
 The dashboard is intentionally lightweight. It is meant to help with planning, not to provide production-grade benchmarks. The IBP section in particular uses coarse assumptions and should be treated as an estimate only.
