@@ -1,6 +1,6 @@
 import math
 
-from tools.featurization_dashboard.dashboard_math import (
+from featurization_dashboard.dashboard_math import (
     DEFAULT_IBP_NUMBER_OF_FEATURES,
     CytoTable_time_per_1000_cells_per_1000_features,
     aggregation_time_per_1000_features,

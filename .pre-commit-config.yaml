@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest
+        entry: env PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=src pytest
         language: system
         pass_filenames: false
         types: [python]

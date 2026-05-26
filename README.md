@@ -29,7 +29,7 @@ Development dependencies live in `requirements-dev.txt`.
 Install the dashboard dependencies:
 
 ```bash
-just dashboard-install
+just sync
 ```
 
 For development tooling and tests:
@@ -43,17 +43,28 @@ python -m pip install -r tools/featurization_dashboard/requirements.txt -r requi
 Start the Streamlit app:
 
 ```bash
-just dashboard-run
+just run
 ```
 
 The app exposes controls for dataset size, compute limits, chart selection, and IBP estimates.
+
+## Deploy to Streamlit Community Cloud
+
+This repository is set up so Streamlit Cloud can launch the app directly from the root entrypoint.
+
+1. Push the repository to GitHub.
+2. In Streamlit Community Cloud, create a new app from this repository.
+3. Set the main file path to `streamlit_app.py`.
+4. Let Streamlit install dependencies from `requirements.txt`.
+
+The root entrypoint adds `src/` to `sys.path`, so the package imports work on Streamlit Cloud without any extra configuration.
 
 ## Export the static site
 
 Generate the standalone export:
 
 ```bash
-just dashboard-export-static
+just generate
 ```
 
 The export script copies `tools/featurization_dashboard/static/index.html` to the dashboard directory root as `index.html` and `static_site_export.html` so the page can be hosted as a default document.
@@ -63,7 +74,7 @@ The export script copies `tools/featurization_dashboard/static/index.html` to th
 You can serve the exported static assets with:
 
 ```bash
-just dashboard-serve-static
+just serve
 ```
 
 This uses Python's built-in HTTP server on port 8000.
